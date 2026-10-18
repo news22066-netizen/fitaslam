@@ -8,8 +8,12 @@ export async function POST(req: Request) {
       reply_markup: { keyboard: [[{ text: '📱 Share my number', request_contact: true }]], resize_keyboard: true, one_time_keyboard: true } })
     await tg('sendMessage', { chat_id: m.chat.id, text: 'Then open the app:', reply_markup: { inline_keyboard: [[{ text: 'Open app', web_app: { url: process.env.APP_URL } }]] } })
   }
-  if (m?.contact && m.contact.user_id === m.from.id) {
-    await db.from('profiles').upsert({ telegram_id: m.from.id, phone_number: m.contact.phone_number, full_name: m.from.first_name }, { onConflict: 'telegram_id' })
+   if (m?.contact && m.contact.user_id === m.from.id) {
+    const { error } = await db.from('profiles').upsert({ telegram_id: m.from.id, phone_number: m.contact.phone_number, full_name: m.from.first_name }, { onConflict: 'telegram_id' })
+    if (error) {
+      await tg('sendMessage', { chat_id: m.chat.id, text: `Could not save your number: ${error.message}`, reply_markup: { remove_keyboard: true } })
+      return Response.json({ ok: true })
+    }
     await tg('sendMessage', { chat_id: m.chat.id, text: 'Number saved ✅ Open the app to pick your trainer.', reply_markup: { remove_keyboard: true } })
   }
   const c = u.callback_query
