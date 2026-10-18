@@ -12,8 +12,10 @@ export async function POST(req: Request) {
   const user = verify(req.headers.get('x-init-data') || '')
   if (!user) return err('Open this app from Telegram.', 401)
   const { action, ...a } = await req.json()
-  const { data: me } = await db.from('profiles').select('*').eq('telegram_id', user.id).maybeSingle()
-  const { data: cr } = await db.from('creators').select('*').eq('telegram_id', user.id).maybeSingle()
+  const { data: me, error: meErr } = await db.from('profiles').select('*').eq('telegram_id', user.id).maybeSingle()
+  const { data: cr, error: crErr } = await db.from('creators').select('*').eq('telegram_id', user.id).maybeSingle()
+  if (meErr || crErr) return err(`Database error: ${(meErr || crErr)!.message}`, 500)
+  if (action === 'debug') return Response.json({ seenId: user.id, me, cr })
   const ok = !!cr || (me?.is_approved && me.trial_ends_at && new Date(me.trial_ends_at) > new Date())
   switch (action) {
     case 'me': {
